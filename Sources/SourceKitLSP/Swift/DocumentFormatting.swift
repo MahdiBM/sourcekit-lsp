@@ -136,20 +136,79 @@ private func edits(from original: DocumentSnapshot, to edited: String) -> [TextE
 
 extension SwiftLanguageService {
   package func documentFormatting(_ req: DocumentFormattingRequest) async throws -> [TextEdit]? {
+    return try await format(
+      snapshot: documentManager.latestSnapshot(req.textDocument.uri),
+      textDocument: req.textDocument,
+      options: req.options
+    )
+  }
+
+  package func documentRangeFormatting(_ req: DocumentRangeFormattingRequest) async throws -> [TextEdit]? {
+    return try await format(
+      snapshot: documentManager.latestSnapshot(req.textDocument.uri),
+      textDocument: req.textDocument,
+      options: req.options,
+      range: req.range
+    )
+  }
+
+  package func documentOnTypeFormatting(_ req: DocumentOnTypeFormattingRequest) async throws -> [TextEdit]? {
+    guard let server = self.sourceKitLSPServer else {
+      return nil
+    }
     let snapshot = try documentManager.latestSnapshot(req.textDocument.uri)
 
+    let capabilities = await server.serverCapabilities(
+      for: capabilityRegistry.clientCapabilities,
+      registry: capabilityRegistry
+    )
+    guard let documentOnTypeFormattingProvider = capabilities.documentOnTypeFormattingProvider,
+      documentOnTypeFormattingProvider.firstTriggerCharacter == req.ch
+        || documentOnTypeFormattingProvider.moreTriggerCharacter?.contains(req.ch) == true,
+      let line = snapshot.lineTable.line(at: req.position.line),
+      /// No need to go through whitespace checking if the trigger is not a newline
+      !req.ch.isNewline || !line.allSatisfy(\.isWhitespace)
+    else {
+      return nil
+    }
+
+    let lineStart = Position(line: req.position.line, utf16index: 0)
+    let nextLineStart = Position(line: req.position.line + 1, utf16index: 0)
+
+    return try await format(
+      snapshot: snapshot,
+      textDocument: req.textDocument,
+      options: req.options,
+      range: lineStart..<nextLineStart
+    )
+  }
+
+  private func format(
+    snapshot: DocumentSnapshot,
+    textDocument: TextDocumentIdentifier,
+    options: FormattingOptions,
+    range: Range<Position>? = nil
+  ) async throws -> [TextEdit]? {
     guard let swiftFormat else {
       throw ResponseError.unknown(
         "Formatting not supported because the toolchain is missing the swift-format executable"
       )
     }
 
-    let process = TSCBasic.Process(
-      args: swiftFormat.pathString,
+    var args = try [
+      swiftFormat.pathString,
       "format",
       "--configuration",
-      try swiftFormatConfiguration(for: req.textDocument.uri, options: req.options)
-    )
+      swiftFormatConfiguration(for: textDocument.uri, options: options),
+    ]
+    if let range {
+      let utf8Range = snapshot.utf8OffsetRange(of: range)
+      args += [
+        "--offsets",
+        "\(utf8Range.lowerBound):\(utf8Range.upperBound - 1)",
+      ]
+    }
+    let process = TSCBasic.Process(arguments: args)
     let writeStream = try process.launch()
 
     // Send the file to format to swift-format's stdin. That way we don't have to write it to a file.
@@ -185,5 +244,11 @@ extension SwiftLanguageService {
     }
 
     return edits(from: snapshot, to: formattedString)
+  }
+}
+
+private extension String {
+  var isNewline: Bool {
+    self == "\n" || self == "\r\n" || self == "\r"
   }
 }

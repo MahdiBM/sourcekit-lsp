@@ -720,6 +720,10 @@ extension SourceKitLSPServer: QueueBasedMessageHandler {
       await self.handleRequest(for: request, requestHandler: self.documentDiagnostic)
     case let request as RequestAndReply<DocumentFormattingRequest>:
       await self.handleRequest(for: request, requestHandler: self.documentFormatting)
+    case let request as RequestAndReply<DocumentRangeFormattingRequest>:
+      await self.handleRequest(for: request, requestHandler: self.documentRangeFormatting)
+    case let request as RequestAndReply<DocumentOnTypeFormattingRequest>:
+      await self.handleRequest(for: request, requestHandler: self.documentOnTypeFormatting)
     case let request as RequestAndReply<DocumentHighlightRequest>:
       await self.handleRequest(for: request, requestHandler: self.documentSymbolHighlight)
     case let request as RequestAndReply<DocumentSemanticTokensDeltaRequest>:
@@ -1038,6 +1042,10 @@ extension SourceKitLSPServer {
       ),
       codeLensProvider: CodeLensOptions(),
       documentFormattingProvider: .value(DocumentFormattingOptions(workDoneProgress: false)),
+      documentRangeFormattingProvider: .value(DocumentRangeFormattingOptions(workDoneProgress: false)),
+      documentOnTypeFormattingProvider: DocumentOnTypeFormattingOptions(triggerCharacters: [
+        "\n", "\r\n", "\r", "{", "}", ";", ".", ":", "#",
+      ]),
       renameProvider: .value(RenameOptions(prepareProvider: true)),
       colorProvider: .bool(true),
       foldingRangeProvider: foldingRangeOptions,
@@ -1529,6 +1537,22 @@ extension SourceKitLSPServer {
     languageService: LanguageService
   ) async throws -> [TextEdit]? {
     return try await languageService.documentFormatting(req)
+  }
+
+  func documentRangeFormatting(
+    _ req: DocumentRangeFormattingRequest,
+    workspace: Workspace,
+    languageService: LanguageService
+  ) async throws -> [TextEdit]? {
+    return try await languageService.documentRangeFormatting(req)
+  }
+
+  func documentOnTypeFormatting(
+    _ req: DocumentOnTypeFormattingRequest,
+    workspace: Workspace,
+    languageService: LanguageService
+  ) async throws -> [TextEdit]? {
+    return try await languageService.documentOnTypeFormatting(req)
   }
 
   func colorPresentation(
