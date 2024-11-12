@@ -86,7 +86,10 @@ final class OnTypeFormattingTests: XCTestCase {
     )
   }
 
-  func testDoesNotFormatWhenInAnEmptyLine() async throws {
+  /// Should not remove empty lines when formatting is triggered on a new empty line.
+  /// Otherwise could mess up writing code. You'd write {} and try to go into the braces to write more code,
+  // only for on-type formatting to immediately close the braces again.
+  func testDoesNothingWhenInAnEmptyLine() async throws {
     try await SkipUnless.toolchainContainsSwiftFormat()
     let testClient = try await TestSourceKitLSPClient()
     let uri = DocumentURI(for: .swift)
@@ -96,7 +99,9 @@ final class OnTypeFormattingTests: XCTestCase {
       func foo() {
       if let SomeReallyLongVar =     Some.More.Stuff(), let a =     myfunc() {
 
+
       1️⃣
+
 
       }
       }
@@ -113,6 +118,10 @@ final class OnTypeFormattingTests: XCTestCase {
       )
     )
 
-    XCTAssertNil(response)
+    let edits = try XCTUnwrap(response)
+    XCTAssertEqual(
+      edits,
+      []
+    )
   }
 }
