@@ -166,7 +166,7 @@ extension SwiftLanguageService {
     
     guard let documentOnTypeFormattingProvider = capabilities.documentOnTypeFormattingProvider,
       documentOnTypeFormattingProvider.firstTriggerCharacter == req.ch
-        || documentOnTypeFormattingProvider.moreTriggerCharacter?.contains(req.ch) == true,
+        || (documentOnTypeFormattingProvider.moreTriggerCharacter?.contains(req.ch) ?? false),
       let line = snapshot.lineTable.line(at: req.position.line),
       /// No need to go through whitespace checking if the trigger is not a newline
       !req.ch.isNewline || !line.allSatisfy(\.isWhitespace)
