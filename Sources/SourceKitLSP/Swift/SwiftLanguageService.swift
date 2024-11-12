@@ -1228,6 +1228,16 @@ extension DocumentSnapshot {
     return Position(line: zeroBasedLine, utf16index: utf16Column)
   }
 
+  /// Converts the given `String.Index` to a UTF-16-based line:column position.
+  ///
+  /// If the index does not refer to a valid position within the snapshot, returns the closest valid
+  /// position and logs a fault containing the file and line of the caller (from `callerFile` and
+  /// `callerLine`).
+  func position(of index: String.Index, fromLine: Int = 0) -> Position {
+    let (line, utf16Column) = lineTable.lineAndUTF16ColumnOf(index, fromLine: fromLine)
+    return Position(line: line, utf16index: utf16Column)
+  }
+
   // MARK: Position <-> AbsolutePosition
 
   /// Converts the given UTF-8-offset-based `AbsolutePosition` to a UTF-16-based line:column.

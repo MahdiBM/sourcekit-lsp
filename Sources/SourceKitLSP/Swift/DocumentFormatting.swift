@@ -166,19 +166,20 @@ extension SwiftLanguageService {
     )
     guard let documentOnTypeFormattingProvider = capabilities.documentOnTypeFormattingProvider,
       documentOnTypeFormattingProvider.firstTriggerCharacter == req.ch
-        || (documentOnTypeFormattingProvider.moreTriggerCharacter?.contains(req.ch) ?? false)
+        || (documentOnTypeFormattingProvider.moreTriggerCharacter?.contains(req.ch) ?? false),
+      let line = snapshot.lineTable.line(at: req.position.line)
     else {
       return nil
     }
 
-    let lineStart = Position(line: req.position.line, utf16index: 0)
-    let nextLineStart = Position(line: req.position.line + 1, utf16index: 0)
+    let lineStartPosition = snapshot.position(of: line.startIndex, fromLine: req.position.line)
+    let lineEndPosition = snapshot.position(of: line.endIndex, fromLine: req.position.line)
 
     return try await format(
       snapshot: snapshot,
       textDocument: req.textDocument,
       options: req.options,
-      range: lineStart..<nextLineStart
+      range: lineStartPosition..<lineEndPosition
     )
   }
 
