@@ -202,9 +202,12 @@ extension SwiftLanguageService {
     ]
     if let range {
       let utf8Range = snapshot.utf8OffsetRange(of: range)
+      // swift-format takes an inclusive range, but Swift's `Range.upperBound` is exclusive.
+      // Also make sure `upperBound` does not go less than `lowerBound`.
+      let utf8UpperBound = max(utf8Range.lowerBound, utf8Range.upperBound - 1)
       args += [
         "--offsets",
-        "\(utf8Range.lowerBound):\(utf8Range.upperBound - 1)",
+        "\(utf8Range.lowerBound):\(utf8UpperBound)",
       ]
     }
     let process = TSCBasic.Process(arguments: args)
