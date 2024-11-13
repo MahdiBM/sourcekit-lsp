@@ -155,20 +155,8 @@ extension SwiftLanguageService {
   }
 
   package func documentOnTypeFormatting(_ req: DocumentOnTypeFormattingRequest) async throws -> [TextEdit]? {
-    guard let server = self.sourceKitLSPServer else {
-      return nil
-    }
-
     let snapshot = try documentManager.latestSnapshot(req.textDocument.uri)
-    let capabilities = await server.serverCapabilities(
-      for: capabilityRegistry.clientCapabilities,
-      registry: capabilityRegistry
-    )
-    guard let documentOnTypeFormattingProvider = capabilities.documentOnTypeFormattingProvider,
-      documentOnTypeFormattingProvider.firstTriggerCharacter == req.ch
-        || (documentOnTypeFormattingProvider.moreTriggerCharacter?.contains(req.ch) ?? false),
-      let line = snapshot.lineTable.line(at: req.position.line)
-    else {
+    guard let line = snapshot.lineTable.line(at: req.position.line) else {
       return nil
     }
 
